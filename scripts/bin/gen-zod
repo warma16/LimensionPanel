@@ -1,0 +1,49 @@
+#!/usr/bin/env node
+
+import {generate} from "ts-to-zod";
+// @ts-ignore
+import fs from "fs";
+// @ts-ignore
+import path from "path";
+import {fileURLToPath} from "url";
+
+// @ts-ignore
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const projectRoot = path.resolve(__dirname, "../../app/");
+const inputDir = path.join(projectRoot, "types");
+const outputDir = path.join(projectRoot, "types/zod-schemas");
+
+fs.mkdirSync(outputDir, {recursive: true});
+
+// 获取所有需要转换的.ts文件（排除.d.ts）
+const tsFiles = fs
+    .readdirSync(inputDir)
+    .filter((file) => file.endsWith(".ts") && !file.endsWith(".d.ts"));
+
+// 处理每个文件
+tsFiles.forEach((file) => {
+    const inputPath = path.join(inputDir, file);
+    const outputPath = path.join(outputDir, file);
+
+    // 读取源文件内容
+    const sourceText = fs.readFileSync(inputPath, "utf8");
+
+    // 生成 Zod 模式代码
+    const {getZodSchemasFile, errors} = generate({
+        sourceText,
+        keepComments: true, // 保留注释
+    });
+
+    if (errors.length > 0) {
+        console.error(`✗ Error processing ${file}:`, errors);
+    }
+
+    // 写入输出文件
+    fs.writeFileSync(outputPath, getZodSchemasFile(inputPath));
+    console.log(`✓ Generated ${path.relative(__dirname, outputPath)}`);
+
+});
+
+console.log("🎉 Zod schema generation completed!");
